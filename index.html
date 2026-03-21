@@ -1,1 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fourier Rotation Visualizer</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121931;
+      --text: #eef2ff;
+      --muted: #b7c0e0;
+      --accent: #8b5cf6;
+      --line: #f8fafc;
+      --curve: #a78bfa;
+      --grid: rgba(255,255,255,0.08);
+    }
 
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #0b1020 0%, #0f172a 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: rgba(18, 25, 49, 0.9);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }
+
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: bold;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .readout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .stat .k {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat .v {
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button.secondary {
+      background: rgba(255,255,255,0.09);
+    }
+
+    .viz {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    canvas {
+      width: 100%;
+      background: #050814;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      display: block;
+    }
+
+    .small {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    code {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #ddd6fe;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Fourier Rotation Visualizer</h1>
+    <p>
+      Explore the parametric curve <code>x(t)=sin(Ωt)cos(ωt)</code> and <code>y(t)=-sin(Ωt)sin(ωt)</code>.
+      When the test rotation frequency <code>ω</code> matches the signal frequency <code>Ω</code>, the pattern becomes simple and stable.
+    </p>
+
+    <div class="grid">
+      <div class="panel">
+        <label for="omegaSignal">Signal frequency Ω</label>
+        <input id="omegaSignal" type="range" min="1" max="12" step="0.1" value="5" />
+
+        <label for="omegaTest">Rotation frequency ω</label>
+        <input id="omegaTest" type="range" min="1" max="12" step="0.01" value="5.2" />
+
+        <label for="tMax">Time window</label>
+        <input id="tMax" type="range" min="6" max="60" step="1" value="25" />
+
+        <label for="stepSize">Step size</label>
+        <input id="stepSize" type="range" min="0.002" max="0.05" step="0.001" value="0.01" />
+
+        <div class="readout">
+          <div class="stat">
+            <div class="k">Ω</div>
+            <div class="v" id="omegaSignalValue">5.00</div>
+          </div>
+          <div class="stat">
+            <div class="k">ω</div>
+            <div class="v" id="omegaTestValue">5.20</div>
+          </div>
+          <div class="stat">
+            <div class="k">|ω − Ω|</div>
+            <div class="v" id="beatValue">0.20</div>
+          </div>
+          <div class="stat">
+            <div class="k">Time window</div>
+            <div class="v" id="tMaxValue">25</div>
+          </div>
+          <div class="stat">
+            <div class="k">Animation time t</div>
+            <div class="v" id="timeValue">0.00</div>
+          </div>
+          <div class="stat">
+            <div class="k">Status</div>
+            <div class="v" id="statusValue">Frequency mismatch</div>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="matchBtn">Set ω = Ω</button>
+          <button id="presetBtn" class="secondary">Set ω = 5.2, Ω = 5</button>
+          <button id="playBtn" class="secondary">Play</button>
+          <button id="downloadBtn" class="secondary">Download CSV</button>
+        </div>
+
+        <p class="small">Developed by Lisa Kastanis</p>
+      </div>
+
+      <div class="viz">
+        <div class="panel">
+          <canvas id="curveCanvas" width="900" height="620"></canvas>
+        </div>
+        <div class="panel">
+          <canvas id="signalCanvas" width="900" height="280"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const omegaSignalInput = document.getElementById('omegaSignal');
+    const omegaTestInput = document.getElementById('omegaTest');
+    const tMaxInput = document.getElementById('tMax');
+    const stepSizeInput = document.getElementById('stepSize');
+
+    const omegaSignalValue = document.getElementById('omegaSignalValue');
+    const omegaTestValue = document.getElementById('omegaTestValue');
+    const beatValue = document.getElementById('beatValue');
+    const tMaxValue = document.getElementById('tMaxValue');
+    const timeValue = document.getElementById('timeValue');
+    const statusValue = document.getElementById('statusValue');
+
+    const curveCanvas = document.getElementById('curveCanvas');
+    const signalCanvas = document.getElementById('signalCanvas');
+    const curveCtx = curveCanvas.getContext('2d');
+    const signalCtx = signalCanvas.getContext('2d');
+
+    const matchBtn = document.getElementById('matchBtn');
+    const presetBtn = document.getElementById('presetBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const playBtn = document.getElementById('playBtn');
+
+    let animationFrameId = null;
+    let isPlaying = false;
+    let traceTime = 0;
+    let lastTimestamp = null;
+
+    function getParams() {
+      return {
+        Omega: parseFloat(omegaSignalInput.value),
+        omega: parseFloat(omegaTestInput.value),
+        tMax: parseFloat(tMaxInput.value),
+        dt: parseFloat(stepSizeInput.value)
+      };
+    }
+
+    function signal(Omega, t) {
+      return Math.sin(Omega * t);
+    }
+
+    function point(Omega, omega, t) {
+      const f = signal(Omega, t);
+      return {
+        x: f * Math.cos(omega * t),
+        y: -f * Math.sin(omega * t)
+      };
+    }
+
+    function generateData(Omega, omega, tMax, dt) {
+      const pts = [];
+      const sig = [];
+      for (let t = 0; t <= tMax; t += dt) {
+        pts.push({ t, ...point(Omega, omega, t) });
+        sig.push({ t, f: signal(Omega, t) });
+      }
+      return { pts, sig };
+    }
+
+    function clearCanvas(ctx, canvas) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#050814';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawGrid(ctx, canvas, xMin, xMax, yMin, yMax, divisions = 8) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= divisions; i++) {
+        const x = (i / divisions) * canvas.width;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let i = 0; i <= divisions; i++) {
+        const y = (i / divisions) * canvas.height;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      const x0 = mapX(0, xMin, xMax, canvas.width);
+      const y0 = mapY(0, yMin, yMax, canvas.height);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x0, 0);
+      ctx.lineTo(x0, canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, y0);
+      ctx.lineTo(canvas.width, y0);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function mapX(x, xMin, xMax, width) {
+      return ((x - xMin) / (xMax - xMin)) * width;
+    }
+
+    function mapY(y, yMin, yMax, height) {
+      return height - ((y - yMin) / (yMax - yMin)) * height;
+    }
+
+    function drawCurve(data, currentTime) {
+      clearCanvas(curveCtx, curveCanvas);
+      const xMin = -1.2, xMax = 1.2, yMin = -1.2, yMax = 1.2;
+      drawGrid(curveCtx, curveCanvas, xMin, xMax, yMin, yMax, 10);
+
+      curveCtx.save();
+      curveCtx.strokeStyle = '#a78bfa';
+      curveCtx.lineWidth = 2.2;
+      curveCtx.beginPath();
+      data.pts.forEach((p, i) => {
+        const x = mapX(p.x, xMin, xMax, curveCanvas.width);
+        const y = mapY(p.y, yMin, yMax, curveCanvas.height);
+        if (i === 0) curveCtx.moveTo(x, y);
+        else curveCtx.lineTo(x, y);
+      });
+      curveCtx.stroke();
+
+      const currentPoint = getPointAtTime(data.pts, currentTime);
+      curveCtx.fillStyle = '#f8fafc';
+      curveCtx.beginPath();
+      curveCtx.arc(mapX(currentPoint.x, xMin, xMax, curveCanvas.width), mapY(currentPoint.y, yMin, yMax, curveCanvas.height), 5, 0, Math.PI * 2);
+      curveCtx.fill();
+
+      curveCtx.fillStyle = '#eef2ff';
+      curveCtx.font = '18px Arial';
+      curveCtx.fillText('Parametric plot: x(t), y(t)', 20, 30);
+      curveCtx.fillStyle = '#a78bfa';
+      curveCtx.font = '14px Arial';
+      curveCtx.fillText(`Current point at t = ${currentTime.toFixed(2)}`, 20, 52);
+      curveCtx.restore();
+    }
+
+    function drawSignal(data, Omega, omega, currentTime) {
+      clearCanvas(signalCtx, signalCanvas);
+      const xMin = 0, xMax = data.sig[data.sig.length - 1].t, yMin = -1.2, yMax = 1.2;
+      drawGrid(signalCtx, signalCanvas, xMin, xMax, yMin, yMax, 10);
+
+      signalCtx.save();
+      signalCtx.strokeStyle = '#f8fafc';
+      signalCtx.lineWidth = 2;
+      signalCtx.beginPath();
+      data.sig.forEach((p, i) => {
+        const x = mapX(p.t, xMin, xMax, signalCanvas.width);
+        const y = mapY(p.f, yMin, yMax, signalCanvas.height);
+        if (i === 0) signalCtx.moveTo(x, y);
+        else signalCtx.lineTo(x, y);
+      });
+      signalCtx.stroke();
+
+      const currentSignal = getPointAtTime(data.sig, currentTime);
+      const dotX = mapX(currentSignal.t, xMin, xMax, signalCanvas.width);
+      const dotY = mapY(currentSignal.f, yMin, yMax, signalCanvas.height);
+
+      signalCtx.strokeStyle = 'rgba(167,139,250,0.45)';
+      signalCtx.lineWidth = 1.5;
+      signalCtx.beginPath();
+      signalCtx.moveTo(dotX, signalCanvas.height);
+      signalCtx.lineTo(dotX, dotY);
+      signalCtx.stroke();
+
+      signalCtx.fillStyle = '#a78bfa';
+      signalCtx.beginPath();
+      signalCtx.arc(dotX, dotY, 5, 0, Math.PI * 2);
+      signalCtx.fill();
+
+      signalCtx.fillStyle = '#eef2ff';
+      signalCtx.font = '18px Arial';
+      signalCtx.fillText(`Signal f(t) = sin(Ωt)   with Ω = ${Omega.toFixed(2)}, ω = ${omega.toFixed(2)}`, 20, 30);
+      signalCtx.fillStyle = '#a78bfa';
+      signalCtx.font = '14px Arial';
+      signalCtx.fillText(`Current point: t = ${currentSignal.t.toFixed(2)}, f(t) = ${currentSignal.f.toFixed(3)}`, 20, 52);
+      signalCtx.restore();
+    }
+
+    function getPointAtTime(arr, t) {
+      if (!arr.length) return null;
+      let best = arr[0];
+      for (let i = 1; i < arr.length; i++) {
+        if (Math.abs(arr[i].t - t) < Math.abs(best.t - t)) best = arr[i];
+      }
+      return best;
+    }
+
+    function updateStatus(Omega, omega) {
+      const diff = Math.abs(omega - Omega);
+      if (diff < 0.05) return 'Frequency match → stable pattern';
+      if (diff < 0.5) return 'Near match → slow beating';
+      return 'Frequency mismatch → rotating interference';
+    }
+
+    function render() {
+      const { Omega, omega, tMax, dt } = getParams();
+      if (traceTime > tMax) traceTime = tMax;
+      omegaSignalValue.textContent = Omega.toFixed(2);
+      omegaTestValue.textContent = omega.toFixed(2);
+      beatValue.textContent = Math.abs(omega - Omega).toFixed(2);
+      tMaxValue.textContent = tMax.toFixed(0);
+      timeValue.textContent = traceTime.toFixed(2);
+      statusValue.textContent = updateStatus(Omega, omega);
+
+      const data = generateData(Omega, omega, tMax, dt);
+      drawCurve(data, traceTime);
+      drawSignal(data, Omega, omega, traceTime);
+    }
+
+    function animate(timestamp) {
+      if (!isPlaying) return;
+      if (lastTimestamp == null) lastTimestamp = timestamp;
+      const elapsed = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+      const { tMax } = getParams();
+      traceTime += elapsed * 2.5;
+      if (traceTime > tMax) traceTime = 0;
+      render();
+      animationFrameId = requestAnimationFrame(animate);
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? 'Pause' : 'Play';
+      if (isPlaying) {
+        lastTimestamp = null;
+        animationFrameId = requestAnimationFrame(animate);
+      } else if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+    }
+
+    function downloadCSV() {
+      const { Omega, omega, tMax, dt } = getParams();
+      const { pts } = generateData(Omega, omega, tMax, dt);
+      const lines = ['t,x,y'];
+      pts.forEach(p => lines.push(`${p.t.toFixed(6)},${p.x.toFixed(8)},${p.y.toFixed(8)}`));
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fourier_rotation_data.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    [omegaSignalInput, omegaTestInput, tMaxInput, stepSizeInput].forEach(el => {
+      el.addEventListener('input', () => {
+        render();
+      });
+    });
+
+    matchBtn.addEventListener('click', () => {
+      omegaTestInput.value = omegaSignalInput.value;
+      render();
+    });
+
+    presetBtn.addEventListener('click', () => {
+      omegaSignalInput.value = 5;
+      omegaTestInput.value = 5.2;
+      tMaxInput.value = 25;
+      stepSizeInput.value = 0.01;
+      render();
+    });
+
+    downloadBtn.addEventListener('click', downloadCSV);
+    playBtn.addEventListener('click', togglePlay);
+
+    render();
+  </script>
+</body>
+</html>
