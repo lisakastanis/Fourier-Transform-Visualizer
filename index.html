@@ -7,13 +7,19 @@
   <style>
     :root {
       --bg: #0b1020;
-      --panel: #121931;
+      --bg2: #0f172a;
+      --panel: rgba(18, 25, 49, 0.94);
       --text: #eef2ff;
       --muted: #b7c0e0;
       --accent: #8b5cf6;
-      --line: #f8fafc;
       --curve: #a78bfa;
+      --signal: #f8fafc;
+      --spectrum: #22d3ee;
       --grid: rgba(255,255,255,0.08);
+      --axis: rgba(255,255,255,0.32);
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
     }
 
     * { box-sizing: border-box; }
@@ -21,49 +27,59 @@
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
-      background: linear-gradient(180deg, #0b1020 0%, #0f172a 100%);
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
       color: var(--text);
     }
 
     .wrap {
-      max-width: 1200px;
+      max-width: 1320px;
       margin: 0 auto;
       padding: 24px;
     }
 
     h1 {
-      margin: 0 0 8px;
-      font-size: 2rem;
+      margin: 0 0 10px;
+      font-size: 2.2rem;
     }
 
-    p {
+    .intro {
       color: var(--muted);
-      line-height: 1.5;
+      line-height: 1.55;
+      margin-bottom: 20px;
+      max-width: 1100px;
+    }
+
+    code {
+      background: rgba(255,255,255,0.08);
+      color: #ddd6fe;
+      padding: 2px 6px;
+      border-radius: 6px;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 360px 1fr;
       gap: 20px;
       align-items: start;
     }
 
     .panel {
-      background: rgba(18, 25, 49, 0.9);
+      background: var(--panel);
       border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 18px;
+      border-radius: 20px;
       padding: 18px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.22);
     }
 
-    label {
+    .controls label {
       display: block;
-      margin: 14px 0 6px;
-      font-weight: bold;
+      margin: 15px 0 7px;
+      font-weight: 700;
     }
 
     input[type="range"] {
       width: 100%;
+      cursor: pointer;
     }
 
     .readout {
@@ -77,18 +93,25 @@
       background: rgba(255,255,255,0.05);
       border-radius: 12px;
       padding: 12px;
+      min-height: 72px;
     }
 
     .stat .k {
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       color: var(--muted);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .stat .v {
-      font-size: 1.25rem;
-      font-weight: bold;
+      font-size: 1.08rem;
+      font-weight: 700;
+      line-height: 1.25;
+      word-break: break-word;
     }
+
+    .status-match { color: var(--green); }
+    .status-near { color: var(--yellow); }
+    .status-mismatch { color: var(--red); }
 
     .button-row {
       display: flex;
@@ -104,7 +127,7 @@
       border-radius: 10px;
       padding: 10px 14px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 700;
     }
 
     button.secondary {
@@ -114,30 +137,39 @@
     .viz {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 16px;
+      gap: 18px;
+    }
+
+    .canvas-wrap {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.22);
     }
 
     canvas {
       width: 100%;
+      display: block;
       background: #050814;
       border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 18px;
-      display: block;
+      border-radius: 16px;
     }
 
-    .small {
-      font-size: 0.9rem;
+    .caption {
+      margin-top: 10px;
       color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.4;
     }
 
-    code {
-      background: rgba(255,255,255,0.08);
-      padding: 2px 6px;
-      border-radius: 6px;
-      color: #ddd6fe;
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.95rem;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 980px) {
       .grid {
         grid-template-columns: 1fr;
       }
@@ -147,18 +179,25 @@
 <body>
   <div class="wrap">
     <h1>Fourier Rotation Visualizer</h1>
-    <p>
-      Explore the parametric curve <code>x(t)=sin(Ωt)cos(ωt)</code> and <code>y(t)=-sin(Ωt)sin(ωt)</code>.
-      When the test rotation frequency <code>ω</code> matches the signal frequency <code>Ω</code>, the pattern becomes simple and stable.
-    </p>
+    <div class="intro">
+      The top plot shows the rotating geometric interpretation of the signal, the middle plot shows the signal versus time,
+      and the bottom plot shows the Fourier spectrum. A single pure sine wave produces one dominant peak. Add a second frequency
+      with the slider below to see multiple peaks appear in the spectrum.
+    </div>
 
     <div class="grid">
-      <div class="panel">
-        <label for="omegaSignal">Signal frequency Ω</label>
+      <div class="panel controls">
+        <label for="omegaSignal">Primary signal frequency Ω₁</label>
         <input id="omegaSignal" type="range" min="1" max="12" step="0.1" value="5" />
 
         <label for="omegaTest">Rotation frequency ω</label>
         <input id="omegaTest" type="range" min="1" max="12" step="0.01" value="5.2" />
+
+        <label for="omegaSecond">Second signal frequency Ω₂</label>
+        <input id="omegaSecond" type="range" min="1" max="12" step="0.1" value="8" />
+
+        <label for="ampSecond">Second component amplitude</label>
+        <input id="ampSecond" type="range" min="0" max="1" step="0.05" value="0" />
 
         <label for="tMax">Time window</label>
         <input id="tMax" type="range" min="6" max="60" step="1" value="25" />
@@ -168,47 +207,76 @@
 
         <div class="readout">
           <div class="stat">
-            <div class="k">Ω</div>
+            <div class="k">Ω₁</div>
             <div class="v" id="omegaSignalValue">5.00</div>
           </div>
+
           <div class="stat">
             <div class="k">ω</div>
             <div class="v" id="omegaTestValue">5.20</div>
           </div>
+
           <div class="stat">
-            <div class="k">|ω − Ω|</div>
+            <div class="k">Ω₂</div>
+            <div class="v" id="omegaSecondValue">8.00</div>
+          </div>
+
+          <div class="stat">
+            <div class="k">Amplitude of Ω₂</div>
+            <div class="v" id="ampSecondValue">0.00</div>
+          </div>
+
+          <div class="stat">
+            <div class="k">|ω − Ω₁|</div>
             <div class="v" id="beatValue">0.20</div>
           </div>
-          <div class="stat">
-            <div class="k">Time window</div>
-            <div class="v" id="tMaxValue">25</div>
-          </div>
+
           <div class="stat">
             <div class="k">Animation time t</div>
             <div class="v" id="timeValue">0.00</div>
           </div>
+
+          <div class="stat">
+            <div class="k">Time window</div>
+            <div class="v" id="tMaxValue">25</div>
+          </div>
+
           <div class="stat">
             <div class="k">Status</div>
-            <div class="v" id="statusValue">Frequency mismatch</div>
+            <div class="v status-mismatch" id="statusValue">Frequency mismatch → rotating interference</div>
           </div>
         </div>
 
         <div class="button-row">
-          <button id="matchBtn">Set ω = Ω</button>
-          <button id="presetBtn" class="secondary">Set ω = 5.2, Ω = 5</button>
+          <button id="matchBtn">Set ω = Ω₁</button>
+          <button id="presetBtn" class="secondary">Reset preset</button>
           <button id="playBtn" class="secondary">Play</button>
           <button id="downloadBtn" class="secondary">Download CSV</button>
         </div>
 
-        <p class="small">Developed by Lisa Kastanis</p>
+        <div class="footer-note">Developed by Lisa Kastanis</div>
       </div>
 
       <div class="viz">
-        <div class="panel">
-          <canvas id="curveCanvas" width="900" height="620"></canvas>
+        <div class="canvas-wrap">
+          <canvas id="curveCanvas" width="950" height="620"></canvas>
+          <div class="caption">
+            Parametric plot with axes: x(t) = f(t)cos(ωt), y(t) = −f(t)sin(ωt)
+          </div>
         </div>
-        <div class="panel">
-          <canvas id="signalCanvas" width="900" height="280"></canvas>
+
+        <div class="canvas-wrap">
+          <canvas id="signalCanvas" width="950" height="300"></canvas>
+          <div class="caption">
+            Signal vs time with labeled axes.
+          </div>
+        </div>
+
+        <div class="canvas-wrap">
+          <canvas id="spectrumCanvas" width="950" height="320"></canvas>
+          <div class="caption">
+            Fourier spectrum: amplitude vs frequency.
+          </div>
         </div>
       </div>
     </div>
@@ -217,25 +285,32 @@
   <script>
     const omegaSignalInput = document.getElementById('omegaSignal');
     const omegaTestInput = document.getElementById('omegaTest');
+    const omegaSecondInput = document.getElementById('omegaSecond');
+    const ampSecondInput = document.getElementById('ampSecond');
     const tMaxInput = document.getElementById('tMax');
     const stepSizeInput = document.getElementById('stepSize');
 
     const omegaSignalValue = document.getElementById('omegaSignalValue');
     const omegaTestValue = document.getElementById('omegaTestValue');
+    const omegaSecondValue = document.getElementById('omegaSecondValue');
+    const ampSecondValue = document.getElementById('ampSecondValue');
     const beatValue = document.getElementById('beatValue');
-    const tMaxValue = document.getElementById('tMaxValue');
     const timeValue = document.getElementById('timeValue');
+    const tMaxValue = document.getElementById('tMaxValue');
     const statusValue = document.getElementById('statusValue');
 
     const curveCanvas = document.getElementById('curveCanvas');
     const signalCanvas = document.getElementById('signalCanvas');
+    const spectrumCanvas = document.getElementById('spectrumCanvas');
+
     const curveCtx = curveCanvas.getContext('2d');
     const signalCtx = signalCanvas.getContext('2d');
+    const spectrumCtx = spectrumCanvas.getContext('2d');
 
     const matchBtn = document.getElementById('matchBtn');
     const presetBtn = document.getElementById('presetBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
     const playBtn = document.getElementById('playBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
 
     let animationFrameId = null;
     let isPlaying = false;
@@ -244,33 +319,59 @@
 
     function getParams() {
       return {
-        Omega: parseFloat(omegaSignalInput.value),
+        Omega1: parseFloat(omegaSignalInput.value),
         omega: parseFloat(omegaTestInput.value),
+        Omega2: parseFloat(omegaSecondInput.value),
+        amp2: parseFloat(ampSecondInput.value),
         tMax: parseFloat(tMaxInput.value),
         dt: parseFloat(stepSizeInput.value)
       };
     }
 
-    function signal(Omega, t) {
-      return Math.sin(Omega * t);
+    function signalValue(Omega1, Omega2, amp2, t) {
+      return Math.sin(Omega1 * t) + amp2 * Math.sin(Omega2 * t);
     }
 
-    function point(Omega, omega, t) {
-      const f = signal(Omega, t);
+    function pointValue(signal, omega, t) {
       return {
-        x: f * Math.cos(omega * t),
-        y: -f * Math.sin(omega * t)
+        x: signal * Math.cos(omega * t),
+        y: -signal * Math.sin(omega * t)
       };
     }
 
-    function generateData(Omega, omega, tMax, dt) {
+    function generateData(Omega1, omega, Omega2, amp2, tMax, dt) {
       const pts = [];
       const sig = [];
       for (let t = 0; t <= tMax; t += dt) {
-        pts.push({ t, ...point(Omega, omega, t) });
-        sig.push({ t, f: signal(Omega, t) });
+        const f = signalValue(Omega1, Omega2, amp2, t);
+        const p = pointValue(f, omega, t);
+        pts.push({ t, x: p.x, y: p.y });
+        sig.push({ t, f });
       }
       return { pts, sig };
+    }
+
+    function computeDFT(sig, dt) {
+      const N = sig.length;
+      const result = [];
+      const halfN = Math.floor(N / 2);
+
+      for (let k = 0; k < halfN; k++) {
+        let re = 0;
+        let im = 0;
+
+        for (let n = 0; n < N; n++) {
+          const angle = 2 * Math.PI * k * n / N;
+          re += sig[n].f * Math.cos(angle);
+          im -= sig[n].f * Math.sin(angle);
+        }
+
+        const amplitude = Math.sqrt(re * re + im * im) / N;
+        const freq = k / (N * dt);
+        result.push({ freq, amp: amplitude });
+      }
+
+      return result;
     }
 
     function clearCanvas(ctx, canvas) {
@@ -279,105 +380,168 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    function drawGrid(ctx, canvas, xMin, xMax, yMin, yMax, divisions = 8) {
+    function mapX(x, xMin, xMax, width, leftPad, rightPad) {
+      return leftPad + ((x - xMin) / (xMax - xMin)) * (width - leftPad - rightPad);
+    }
+
+    function mapY(y, yMin, yMax, height, topPad, bottomPad) {
+      return height - bottomPad - ((y - yMin) / (yMax - yMin)) * (height - topPad - bottomPad);
+    }
+
+    function getClosestPoint(arr, t) {
+      let closest = arr[0];
+      for (let i = 1; i < arr.length; i++) {
+        if (Math.abs(arr[i].t - t) < Math.abs(closest.t - t)) {
+          closest = arr[i];
+        }
+      }
+      return closest;
+    }
+
+    function getStatus(diff) {
+      if (diff < 0.05) return { text: 'Frequency match → stable pattern', cls: 'status-match' };
+      if (diff < 0.5) return { text: 'Near match → slow beating', cls: 'status-near' };
+      return { text: 'Frequency mismatch → rotating interference', cls: 'status-mismatch' };
+    }
+
+    function drawAxesAndGrid(ctx, canvas, xMin, xMax, yMin, yMax, xLabel, yLabel, leftPad = 70, rightPad = 25, topPad = 25, bottomPad = 55) {
       ctx.save();
+
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
       ctx.lineWidth = 1;
-      for (let i = 0; i <= divisions; i++) {
-        const x = (i / divisions) * canvas.width;
+
+      const xTicks = 10;
+      const yTicks = 8;
+
+      for (let i = 0; i <= xTicks; i++) {
+        const xVal = xMin + (i / xTicks) * (xMax - xMin);
+        const x = mapX(xVal, xMin, xMax, canvas.width, leftPad, rightPad);
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let i = 0; i <= divisions; i++) {
-        const y = (i / divisions) * canvas.height;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+        ctx.moveTo(x, topPad);
+        ctx.lineTo(x, canvas.height - bottomPad);
         ctx.stroke();
       }
 
-      const x0 = mapX(0, xMin, xMax, canvas.width);
-      const y0 = mapY(0, yMin, yMax, canvas.height);
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      for (let i = 0; i <= yTicks; i++) {
+        const yVal = yMin + (i / yTicks) * (yMax - yMin);
+        const y = mapY(yVal, yMin, yMax, canvas.height, topPad, bottomPad);
+        ctx.beginPath();
+        ctx.moveTo(leftPad, y);
+        ctx.lineTo(canvas.width - rightPad, y);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.32)';
       ctx.lineWidth = 1.5;
+
       ctx.beginPath();
-      ctx.moveTo(x0, 0);
-      ctx.lineTo(x0, canvas.height);
+      ctx.moveTo(leftPad, canvas.height - bottomPad);
+      ctx.lineTo(canvas.width - rightPad, canvas.height - bottomPad);
       ctx.stroke();
+
       ctx.beginPath();
-      ctx.moveTo(0, y0);
-      ctx.lineTo(canvas.width, y0);
+      ctx.moveTo(leftPad, topPad);
+      ctx.lineTo(leftPad, canvas.height - bottomPad);
       ctx.stroke();
+
+      ctx.fillStyle = '#b7c0e0';
+      ctx.font = '14px Arial';
+
+      for (let i = 0; i <= xTicks; i++) {
+        const xVal = xMin + (i / xTicks) * (xMax - xMin);
+        const x = mapX(xVal, xMin, xMax, canvas.width, leftPad, rightPad);
+        ctx.fillText(xVal.toFixed(1), x - 12, canvas.height - bottomPad + 20);
+      }
+
+      for (let i = 0; i <= yTicks; i++) {
+        const yVal = yMin + (i / yTicks) * (yMax - yMin);
+        const y = mapY(yVal, yMin, yMax, canvas.height, topPad, bottomPad);
+        ctx.fillText(yVal.toFixed(1), 16, y + 4);
+      }
+
+      ctx.fillStyle = '#eef2ff';
+      ctx.font = '16px Arial';
+      ctx.fillText(xLabel, canvas.width / 2 - 30, canvas.height - 15);
+
+      ctx.save();
+      ctx.translate(18, canvas.height / 2 + 30);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(yLabel, 0, 0);
       ctx.restore();
-    }
 
-    function mapX(x, xMin, xMax, width) {
-      return ((x - xMin) / (xMax - xMin)) * width;
-    }
+      ctx.restore();
 
-    function mapY(y, yMin, yMax, height) {
-      return height - ((y - yMin) / (yMax - yMin)) * height;
+      return { leftPad, rightPad, topPad, bottomPad };
     }
 
     function drawCurve(data, currentTime) {
       clearCanvas(curveCtx, curveCanvas);
-      const xMin = -1.2, xMax = 1.2, yMin = -1.2, yMax = 1.2;
-      drawGrid(curveCtx, curveCanvas, xMin, xMax, yMin, yMax, 10);
+
+      const xMin = -1.5, xMax = 1.5;
+      const yMin = -1.5, yMax = 1.5;
+      const pads = drawAxesAndGrid(curveCtx, curveCanvas, xMin, xMax, yMin, yMax, 'x(t)', 'y(t)');
 
       curveCtx.save();
       curveCtx.strokeStyle = '#a78bfa';
       curveCtx.lineWidth = 2.2;
       curveCtx.beginPath();
+
       data.pts.forEach((p, i) => {
-        const x = mapX(p.x, xMin, xMax, curveCanvas.width);
-        const y = mapY(p.y, yMin, yMax, curveCanvas.height);
+        const x = mapX(p.x, xMin, xMax, curveCanvas.width, pads.leftPad, pads.rightPad);
+        const y = mapY(p.y, yMin, yMax, curveCanvas.height, pads.topPad, pads.bottomPad);
         if (i === 0) curveCtx.moveTo(x, y);
         else curveCtx.lineTo(x, y);
       });
+
       curveCtx.stroke();
 
-      const currentPoint = getPointAtTime(data.pts, currentTime);
+      const current = getClosestPoint(data.pts, currentTime);
+      const dotX = mapX(current.x, xMin, xMax, curveCanvas.width, pads.leftPad, pads.rightPad);
+      const dotY = mapY(current.y, yMin, yMax, curveCanvas.height, pads.topPad, pads.bottomPad);
+
       curveCtx.fillStyle = '#f8fafc';
       curveCtx.beginPath();
-      curveCtx.arc(mapX(currentPoint.x, xMin, xMax, curveCanvas.width), mapY(currentPoint.y, yMin, yMax, curveCanvas.height), 5, 0, Math.PI * 2);
+      curveCtx.arc(dotX, dotY, 5, 0, Math.PI * 2);
       curveCtx.fill();
 
       curveCtx.fillStyle = '#eef2ff';
       curveCtx.font = '18px Arial';
-      curveCtx.fillText('Parametric plot: x(t), y(t)', 20, 30);
-      curveCtx.fillStyle = '#a78bfa';
-      curveCtx.font = '14px Arial';
-      curveCtx.fillText(`Current point at t = ${currentTime.toFixed(2)}`, 20, 52);
+      curveCtx.fillText('Parametric plot', pads.leftPad, 22);
+
       curveCtx.restore();
     }
 
-    function drawSignal(data, Omega, omega, currentTime) {
+    function drawSignal(data, Omega1, omega, currentTime) {
       clearCanvas(signalCtx, signalCanvas);
-      const xMin = 0, xMax = data.sig[data.sig.length - 1].t, yMin = -1.2, yMax = 1.2;
-      drawGrid(signalCtx, signalCanvas, xMin, xMax, yMin, yMax, 10);
+
+      const xMin = 0;
+      const xMax = data.sig[data.sig.length - 1].t;
+      const yMin = -2;
+      const yMax = 2;
+      const pads = drawAxesAndGrid(signalCtx, signalCanvas, xMin, xMax, yMin, yMax, 'time', 'signal amplitude');
 
       signalCtx.save();
       signalCtx.strokeStyle = '#f8fafc';
       signalCtx.lineWidth = 2;
       signalCtx.beginPath();
+
       data.sig.forEach((p, i) => {
-        const x = mapX(p.t, xMin, xMax, signalCanvas.width);
-        const y = mapY(p.f, yMin, yMax, signalCanvas.height);
+        const x = mapX(p.t, xMin, xMax, signalCanvas.width, pads.leftPad, pads.rightPad);
+        const y = mapY(p.f, yMin, yMax, signalCanvas.height, pads.topPad, pads.bottomPad);
         if (i === 0) signalCtx.moveTo(x, y);
         else signalCtx.lineTo(x, y);
       });
+
       signalCtx.stroke();
 
-      const currentSignal = getPointAtTime(data.sig, currentTime);
-      const dotX = mapX(currentSignal.t, xMin, xMax, signalCanvas.width);
-      const dotY = mapY(currentSignal.f, yMin, yMax, signalCanvas.height);
+      const current = getClosestPoint(data.sig, currentTime);
+      const dotX = mapX(current.t, xMin, xMax, signalCanvas.width, pads.leftPad, pads.rightPad);
+      const dotY = mapY(current.f, yMin, yMax, signalCanvas.height, pads.topPad, pads.bottomPad);
 
       signalCtx.strokeStyle = 'rgba(167,139,250,0.45)';
       signalCtx.lineWidth = 1.5;
       signalCtx.beginPath();
-      signalCtx.moveTo(dotX, signalCanvas.height);
+      signalCtx.moveTo(dotX, signalCanvas.height - pads.bottomPad);
       signalCtx.lineTo(dotX, dotY);
       signalCtx.stroke();
 
@@ -388,52 +552,78 @@
 
       signalCtx.fillStyle = '#eef2ff';
       signalCtx.font = '18px Arial';
-      signalCtx.fillText(`Signal f(t) = sin(Ωt)   with Ω = ${Omega.toFixed(2)}, ω = ${omega.toFixed(2)}`, 20, 30);
-      signalCtx.fillStyle = '#a78bfa';
-      signalCtx.font = '14px Arial';
-      signalCtx.fillText(`Current point: t = ${currentSignal.t.toFixed(2)}, f(t) = ${currentSignal.f.toFixed(3)}`, 20, 52);
+      signalCtx.fillText('Signal vs time', pads.leftPad, 22);
+
       signalCtx.restore();
     }
 
-    function getPointAtTime(arr, t) {
-      if (!arr.length) return null;
-      let best = arr[0];
-      for (let i = 1; i < arr.length; i++) {
-        if (Math.abs(arr[i].t - t) < Math.abs(best.t - t)) best = arr[i];
-      }
-      return best;
-    }
+    function drawSpectrum(spectrum) {
+      clearCanvas(spectrumCtx, spectrumCanvas);
 
-    function updateStatus(Omega, omega) {
-      const diff = Math.abs(omega - Omega);
-      if (diff < 0.05) return 'Frequency match → stable pattern';
-      if (diff < 0.5) return 'Near match → slow beating';
-      return 'Frequency mismatch → rotating interference';
+      const xMin = 0;
+      const xMax = Math.max(...spectrum.map(d => d.freq));
+      const yMin = 0;
+      const yMax = Math.max(0.1, ...spectrum.map(d => d.amp)) * 1.1;
+
+      const pads = drawAxesAndGrid(spectrumCtx, spectrumCanvas, xMin, xMax, yMin, yMax, 'frequency', 'amplitude');
+
+      spectrumCtx.save();
+      spectrumCtx.strokeStyle = '#22d3ee';
+      spectrumCtx.lineWidth = 2;
+      spectrumCtx.beginPath();
+
+      spectrum.forEach((d, i) => {
+        const x = mapX(d.freq, xMin, xMax, spectrumCanvas.width, pads.leftPad, pads.rightPad);
+        const y = mapY(d.amp, yMin, yMax, spectrumCanvas.height, pads.topPad, pads.bottomPad);
+        if (i === 0) spectrumCtx.moveTo(x, y);
+        else spectrumCtx.lineTo(x, y);
+      });
+
+      spectrumCtx.stroke();
+
+      spectrumCtx.fillStyle = '#eef2ff';
+      spectrumCtx.font = '18px Arial';
+      spectrumCtx.fillText('Fourier spectrum', pads.leftPad, 22);
+
+      spectrumCtx.restore();
     }
 
     function render() {
-      const { Omega, omega, tMax, dt } = getParams();
-      if (traceTime > tMax) traceTime = tMax;
-      omegaSignalValue.textContent = Omega.toFixed(2);
-      omegaTestValue.textContent = omega.toFixed(2);
-      beatValue.textContent = Math.abs(omega - Omega).toFixed(2);
-      tMaxValue.textContent = tMax.toFixed(0);
-      timeValue.textContent = traceTime.toFixed(2);
-      statusValue.textContent = updateStatus(Omega, omega);
+      const { Omega1, omega, Omega2, amp2, tMax, dt } = getParams();
 
-      const data = generateData(Omega, omega, tMax, dt);
+      if (traceTime > tMax) traceTime = tMax;
+
+      omegaSignalValue.textContent = Omega1.toFixed(2);
+      omegaTestValue.textContent = omega.toFixed(2);
+      omegaSecondValue.textContent = Omega2.toFixed(2);
+      ampSecondValue.textContent = amp2.toFixed(2);
+      beatValue.textContent = Math.abs(omega - Omega1).toFixed(2);
+      timeValue.textContent = traceTime.toFixed(2);
+      tMaxValue.textContent = tMax.toFixed(0);
+
+      const status = getStatus(Math.abs(omega - Omega1));
+      statusValue.textContent = status.text;
+      statusValue.className = `v ${status.cls}`;
+
+      const data = generateData(Omega1, omega, Omega2, amp2, tMax, dt);
+      const spectrum = computeDFT(data.sig, dt);
+
       drawCurve(data, traceTime);
-      drawSignal(data, Omega, omega, traceTime);
+      drawSignal(data, Omega1, omega, traceTime);
+      drawSpectrum(spectrum);
     }
 
     function animate(timestamp) {
       if (!isPlaying) return;
-      if (lastTimestamp == null) lastTimestamp = timestamp;
+
+      if (lastTimestamp === null) lastTimestamp = timestamp;
       const elapsed = (timestamp - lastTimestamp) / 1000;
       lastTimestamp = timestamp;
+
       const { tMax } = getParams();
       traceTime += elapsed * 2.5;
       if (traceTime > tMax) traceTime = 0;
+
       render();
       animationFrameId = requestAnimationFrame(animate);
     }
@@ -441,6 +631,7 @@
     function togglePlay() {
       isPlaying = !isPlaying;
       playBtn.textContent = isPlaying ? 'Pause' : 'Play';
+
       if (isPlaying) {
         lastTimestamp = null;
         animationFrameId = requestAnimationFrame(animate);
@@ -451,23 +642,27 @@
     }
 
     function downloadCSV() {
-      const { Omega, omega, tMax, dt } = getParams();
-      const { pts } = generateData(Omega, omega, tMax, dt);
-      const lines = ['t,x,y'];
-      pts.forEach(p => lines.push(`${p.t.toFixed(6)},${p.x.toFixed(8)},${p.y.toFixed(8)}`));
+      const { Omega1, omega, Omega2, amp2, tMax, dt } = getParams();
+      const data = generateData(Omega1, omega, Omega2, amp2, tMax, dt);
+      const lines = ['t,signal,x,y'];
+
+      for (let i = 0; i < data.sig.length; i++) {
+        lines.push(
+          `${data.sig[i].t.toFixed(6)},${data.sig[i].f.toFixed(8)},${data.pts[i].x.toFixed(8)},${data.pts[i].y.toFixed(8)}`
+        );
+      }
+
       const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'fourier_rotation_data.csv';
+      a.download = 'fourier_visualizer_data.csv';
       a.click();
       URL.revokeObjectURL(url);
     }
 
-    [omegaSignalInput, omegaTestInput, tMaxInput, stepSizeInput].forEach(el => {
-      el.addEventListener('input', () => {
-        render();
-      });
+    [omegaSignalInput, omegaTestInput, omegaSecondInput, ampSecondInput, tMaxInput, stepSizeInput].forEach(el => {
+      el.addEventListener('input', render);
     });
 
     matchBtn.addEventListener('click', () => {
@@ -478,13 +673,16 @@
     presetBtn.addEventListener('click', () => {
       omegaSignalInput.value = 5;
       omegaTestInput.value = 5.2;
+      omegaSecondInput.value = 8;
+      ampSecondInput.value = 0;
       tMaxInput.value = 25;
       stepSizeInput.value = 0.01;
+      traceTime = 0;
       render();
     });
 
-    downloadBtn.addEventListener('click', downloadCSV);
     playBtn.addEventListener('click', togglePlay);
+    downloadBtn.addEventListener('click', downloadCSV);
 
     render();
   </script>
