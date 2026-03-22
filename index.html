@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fourier Rotation Visualizer</title>
+  <title>Fourier Transform Visualizer</title>
   <style>
     :root {
       --bg: #0b1020;
@@ -178,11 +178,12 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Fourier Rotation Visualizer</h1>
+    <h1>Fourier Transform Visualizer</h1>
     <div class="intro">
       The top plot shows the rotating geometric interpretation of the signal, the middle plot shows the signal versus time,
-      and the bottom plot shows the Fourier spectrum. A single pure sine wave produces one dominant peak. Add a second frequency
-      with the slider below to see multiple peaks appear in the spectrum.
+      and the bottom plot shows the <strong>power spectrum versus angular frequency</strong>. The bottom axis now uses the
+      same angular-frequency units as the sliders and is capped at a meaningful display range so the peaks are not scrunched
+      against the left side.
     </div>
 
     <div class="grid">
@@ -261,7 +262,7 @@
         <div class="canvas-wrap">
           <canvas id="curveCanvas" width="950" height="620"></canvas>
           <div class="caption">
-            Parametric plot with axes: x(t) = f(t)cos(ωt), y(t) = −f(t)sin(ωt)
+            Parametric plot: <code>x(t)=f(t)cos(ωt)</code>, <code>y(t)=−f(t)sin(ωt)</code>
           </div>
         </div>
 
@@ -275,7 +276,7 @@
         <div class="canvas-wrap">
           <canvas id="spectrumCanvas" width="950" height="320"></canvas>
           <div class="caption">
-            Fourier spectrum: amplitude vs frequency.
+            Power spectrum: power vs angular frequency.
           </div>
         </div>
       </div>
@@ -366,9 +367,12 @@
           im -= sig[n].f * Math.sin(angle);
         }
 
-        const amplitude = Math.sqrt(re * re + im * im) / N;
-        const freq = k / (N * dt);
-        result.push({ freq, amp: amplitude });
+        const amplitude = (2 / N) * Math.sqrt(re * re + im * im);
+        const power = amplitude * amplitude;
+        const freqCycles = k / (N * dt);
+        const omegaAngular = 2 * Math.PI * freqCycles;
+
+        result.push({ omega: omegaAngular, power: power });
       }
 
       return result;
@@ -456,12 +460,12 @@
       for (let i = 0; i <= yTicks; i++) {
         const yVal = yMin + (i / yTicks) * (yMax - yMin);
         const y = mapY(yVal, yMin, yMax, canvas.height, topPad, bottomPad);
-        ctx.fillText(yVal.toFixed(1), 16, y + 4);
+        ctx.fillText(yVal.toFixed(2), 10, y + 4);
       }
 
       ctx.fillStyle = '#eef2ff';
       ctx.font = '16px Arial';
-      ctx.fillText(xLabel, canvas.width / 2 - 30, canvas.height - 15);
+      ctx.fillText(xLabel, canvas.width / 2 - 55, canvas.height - 15);
 
       ctx.save();
       ctx.translate(18, canvas.height / 2 + 30);
@@ -511,13 +515,19 @@
       curveCtx.restore();
     }
 
-    function drawSignal(data, Omega1, omega, currentTime) {
+    function drawSignal(data, currentTime) {
       clearCanvas(signalCtx, signalCanvas);
 
       const xMin = 0;
       const xMax = data.sig[data.sig.length - 1].t;
-      const yMin = -2;
-      const yMax = 2;
+
+      let yAbs = Math.max(...data.sig.map(p => Math.abs(p.f)));
+      if (yAbs < 1) yAbs = 1;
+      yAbs *= 1.15;
+
+      const yMin = -yAbs;
+      const yMax = yAbs;
+
       const pads = drawAxesAndGrid(signalCtx, signalCanvas, xMin, xMax, yMin, yMax, 'time', 'signal amplitude');
 
       signalCtx.save();
@@ -557,24 +567,36 @@
       signalCtx.restore();
     }
 
-    function drawSpectrum(spectrum) {
+    function drawSpectrum(spectrum, xMaxDisplay) {
       clearCanvas(spectrumCtx, spectrumCanvas);
 
       const xMin = 0;
-      const xMax = Math.max(...spectrum.map(d => d.freq));
-      const yMin = 0;
-      const yMax = Math.max(0.1, ...spectrum.map(d => d.amp)) * 1.1;
+      const xMax = xMaxDisplay;
 
-      const pads = drawAxesAndGrid(spectrumCtx, spectrumCanvas, xMin, xMax, yMin, yMax, 'frequency', 'amplitude');
+      const filtered = spectrum.filter(d => d.omega <= xMax);
+      let yMax = Math.max(...filtered.map(d => d.power));
+      if (!isFinite(yMax) || yMax <= 0) yMax = 1;
+      yMax *= 1.1;
+
+      const pads = drawAxesAndGrid(
+        spectrumCtx,
+        spectrumCanvas,
+        xMin,
+        xMax,
+        0,
+        yMax,
+        'angular frequency',
+        'power'
+      );
 
       spectrumCtx.save();
       spectrumCtx.strokeStyle = '#22d3ee';
       spectrumCtx.lineWidth = 2;
       spectrumCtx.beginPath();
 
-      spectrum.forEach((d, i) => {
-        const x = mapX(d.freq, xMin, xMax, spectrumCanvas.width, pads.leftPad, pads.rightPad);
-        const y = mapY(d.amp, yMin, yMax, spectrumCanvas.height, pads.topPad, pads.bottomPad);
+      filtered.forEach((d, i) => {
+        const x = mapX(d.omega, xMin, xMax, spectrumCanvas.width, pads.leftPad, pads.rightPad);
+        const y = mapY(d.power, 0, yMax, spectrumCanvas.height, pads.topPad, pads.bottomPad);
         if (i === 0) spectrumCtx.moveTo(x, y);
         else spectrumCtx.lineTo(x, y);
       });
@@ -583,7 +605,7 @@
 
       spectrumCtx.fillStyle = '#eef2ff';
       spectrumCtx.font = '18px Arial';
-      spectrumCtx.fillText('Fourier spectrum', pads.leftPad, 22);
+      spectrumCtx.fillText('Power spectrum', pads.leftPad, 22);
 
       spectrumCtx.restore();
     }
@@ -608,9 +630,15 @@
       const data = generateData(Omega1, omega, Omega2, amp2, tMax, dt);
       const spectrum = computeDFT(data.sig, dt);
 
+      let highestSignalOmega = Omega1;
+      if (amp2 > 0) highestSignalOmega = Math.max(Omega1, Omega2);
+
+      // Tight, meaningful display range so peaks are not scrunched.
+      const xMaxDisplay = Math.max(10, highestSignalOmega * 1.25);
+
       drawCurve(data, traceTime);
-      drawSignal(data, Omega1, omega, traceTime);
-      drawSpectrum(spectrum);
+      drawSignal(data, traceTime);
+      drawSpectrum(spectrum, xMaxDisplay);
     }
 
     function animate(timestamp) {
